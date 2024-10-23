@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>オリジナルゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="map">
+        <img id="player" src="img/prayer.gif" alt="プレイヤー" style="display:none;">
+        <div id="pokemon-container"></div>
+        <div id="ball-container">
+            <img id="ball" src="img/normalball.png" alt="ボール" draggable="false">
+        </div>
+    </div>
+    <div id="catch-screen" style="display:none;">
+        <div id="catch-background">
+            <h1 id="catch-message"></h1>
+            <button id="catch-button">捕まえる</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
