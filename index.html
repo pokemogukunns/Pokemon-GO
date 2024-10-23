@@ -63,8 +63,6 @@
     // 位置情報取得失敗時の処理
     function onLocationError(e) {
       alert("位置情報が取得できませんでした。GPSの使用を許可してください。");
-      // 再度ユーザーに位置情報取得を要求
-      navigator.geolocation.getCurrentPosition(onLocationFound, onLocationError);
     }
 
     // 位置情報の取得 (GPS)
