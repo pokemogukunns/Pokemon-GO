@@ -10,85 +10,110 @@
       height: 500px;
       width: 100%;
     }
-    .pokemon-info {
-      display: flex;
-      align-items: center;
-      margin-top: 10px;
-    }
-    .pokemon-info img {
-      margin-right: 10px;
-    }
   </style>
 </head>
 <body>
   <h1>Pokémon風マップ</h1>
   <div id="map"></div>
-  <div id="pokemon-details"></div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
-    // マップの初期化
-    var map = L.map('map').setView([35.681236, 139.767125], 13); // 東京駅の座標
+    // マップの初期化（デフォルトは東京駅、GPS取得前の仮の位置）
+    var map = L.map('map').setView([35.681236, 139.767125], 13); 
 
     // OpenStreetMapのタイルを読み込む
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 特定のランドマークをポケストップとして表示
-    var stops = [
-      { lat: 35.681236, lng: 139.767125, name: "ポケストップA" },
-      { lat: 35.682839, lng: 139.769927, name: "ポケストップB" }
-    ];
-
-    stops.forEach(function (stop) {
-      L.marker([stop.lat, stop.lng])
-        .addTo(map)
-        .bindPopup(stop.name);
+    // ジムやポケストップのアイコン
+    var gymIcon = L.icon({
+      iconUrl: 'gym.png', // ジムのアイコン画像
+      iconSize: [50, 50]
     });
 
-    // ランダムにポケモンを出現させる関数
-    function spawnPokemon(lat, lng, radius) {
-      var randomLat = lat + (Math.random() - 0.5) * radius;
-      var randomLng = lng + (Math.random() - 0.5) * radius;
+    var pokestopIcon = L.icon({
+      iconUrl: 'pokestop.png', // ポケストップのアイコン画像
+      iconSize: [30, 30]
+    });
 
-      // ポケモンの画像を表示 (プレースホルダー画像を使う)
-      var pokemonIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png', // ピカチュウの画像
-        iconSize: [50, 50]
-      });
+    // 位置情報取得成功時の処理
+    function onLocationFound(e) {
+      var lat = e.latitude;
+      var lng = e.longitude;
 
-      // ランダムな位置にポケモンをマップ上に表示
-      var pokemonMarker = L.marker([randomLat, randomLng], { icon: pokemonIcon }).addTo(map);
-      pokemonMarker.bindPopup("ポケモンが出現！");
+      // マップをユーザーの位置に移動
+      map.setView([lat, lng], 15);
+
+      // 現在地にマーカーを表示
+      L.marker([lat, lng]).addTo(map).bindPopup("あなたの位置").openPopup();
+
+      // ローカルストレージにジムやポケストップが保存されているか確認
+      var savedLandmarks = localStorage.getItem('landmarks');
+      
+      if (!savedLandmarks) {
+        // 初回読み込み時にランドマークを取得してジム・ポケストップを生成
+        fetchLandmarks(lat, lng);
+      } else {
+        // 保存されたランドマークをマップに表示
+        displayLandmarks(JSON.parse(savedLandmarks));
+      }
     }
 
-    // 位置情報取得時にポケモンをランダムで出現させる
-    navigator.geolocation.getCurrentPosition(function (position) {
-      var lat = position.coords.latitude;
-      var lng = position.coords.longitude;
+    // 位置情報取得失敗時の処理
+    function onLocationError(e) {
+      alert("位置情報が取得できませんでした。GPSの使用を許可してください。");
+      // 再度ユーザーに位置情報取得を要求
+      navigator.geolocation.getCurrentPosition(onLocationFound, onLocationError);
+    }
 
-      // 半径50メートル以内でポケモンを出現させる
-      spawnPokemon(lat, lng, 0.05);
-    });
+    // 位置情報の取得 (GPS)
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          var lat = position.coords.latitude;
+          var lng = position.coords.longitude;
+          onLocationFound({ latitude: lat, longitude: lng });
+        }, onLocationError);
+      } else {
+        alert("このブラウザでは位置情報の取得がサポートされていません。");
+      }
+    }
 
-    // PokeAPIからポケモンデータを取得して表示する
-    fetch('https://pokeapi.co/api/v2/pokemon/ditto')
-      .then(response => response.json())
-      .then(data => {
-        console.log(data); // ポケモンの詳細データ
-        var pokemonName = data.name;
-        var pokemonSprite = data.sprites.front_default; // ポケモンの画像
+    // ページ読み込み時に位置情報取得を試みる
+    getLocation();
 
-        // ポケモン名と画像を画面に表示
-        var pokemonDetailsDiv = document.getElementById('pokemon-details');
-        pokemonDetailsDiv.innerHTML = `
-          <div class="pokemon-info">
-            <img src="${pokemonSprite}" alt="${pokemonName}">
-            <h2>${pokemonName}</h2>
-          </div>
-        `;
+    // OpenStreetMapのAPIを使用してランドマークを取得する関数
+    function fetchLandmarks(lat, lng) {
+      var radius = 1000; // 1km以内のランドマークを検索
+      var overpassApiUrl = `https://overpass-api.de/api/interpreter?data=[out:json];(node[leisure=park](around:${radius},${lat},${lng});node[amenity=school](around:${radius},${lat},${lng});node[amenity=hospital](around:${radius},${lat},${lng}););out;`;
+
+      fetch(overpassApiUrl)
+        .then(response => response.json())
+        .then(data => {
+          var landmarks = data.elements.map(element => ({
+            lat: element.lat,
+            lng: element.lon,
+            type: element.tags.amenity ? 'gym' : 'pokestop'
+          }));
+
+          // ランドマークをローカルストレージに保存
+          localStorage.setItem('landmarks', JSON.stringify(landmarks));
+
+          // マップにランドマークを表示
+          displayLandmarks(landmarks);
+        })
+        .catch(error => console.error('Error fetching landmarks:', error));
+    }
+
+    // ランドマークをマップに表示する関数
+    function displayLandmarks(landmarks) {
+      landmarks.forEach(landmark => {
+        var icon = landmark.type === 'gym' ? gymIcon : pokestopIcon;
+        L.marker([landmark.lat, landmark.lng], { icon }).addTo(map)
+          .bindPopup(landmark.type === 'gym' ? 'ジム' : 'ポケストップ');
       });
+    }
   </script>
 </body>
 </html>
