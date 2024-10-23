@@ -1,6 +1,7 @@
 let player = document.getElementById('player');
 let ball = document.getElementById('ball');
 let isDragging = false;
+let currentBall = 'normal'; // 初期ボールはノーマルボール
 
 ball.onmousedown = (event) => {
     isDragging = true;
@@ -144,3 +145,4 @@ function startPlayerMovement() {
 }
 
 window.onload = initMap; // ページが読み込まれたときに地図を初期化
+
