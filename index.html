@@ -1,24 +1,94 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>オリジナルゲーム</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon風マップ</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 500px;
+      width: 100%;
+    }
+    .pokemon-info {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .pokemon-info img {
+      margin-right: 10px;
+    }
+  </style>
 </head>
 <body>
-    <div id="map">
-        <img id="player" src="img/prayer.gif" alt="プレイヤー" style="display:none;">
-        <div id="pokemon-container"></div>
-        <div id="ball-container">
-            <img id="ball" src="img/normalball.png" alt="ボール" draggable="false">
-        </div>
-    </div>
-    <div id="catch-screen" style="display:none;">
-        <div id="catch-background">
-            <h1 id="catch-message"></h1>
-            <button id="catch-button">捕まえる</button>
-        </div>
-    </div>
-    <script src="script.js"></script>
+  <h1>Pokémon風マップ</h1>
+  <div id="map"></div>
+  <div id="pokemon-details"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    // マップの初期化
+    var map = L.map('map').setView([35.681236, 139.767125], 13); // 東京駅の座標
+
+    // OpenStreetMapのタイルを読み込む
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 特定のランドマークをポケストップとして表示
+    var stops = [
+      { lat: 35.681236, lng: 139.767125, name: "ポケストップA" },
+      { lat: 35.682839, lng: 139.769927, name: "ポケストップB" }
+    ];
+
+    stops.forEach(function (stop) {
+      L.marker([stop.lat, stop.lng])
+        .addTo(map)
+        .bindPopup(stop.name);
+    });
+
+    // ランダムにポケモンを出現させる関数
+    function spawnPokemon(lat, lng, radius) {
+      var randomLat = lat + (Math.random() - 0.5) * radius;
+      var randomLng = lng + (Math.random() - 0.5) * radius;
+
+      // ポケモンの画像を表示 (プレースホルダー画像を使う)
+      var pokemonIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png', // ピカチュウの画像
+        iconSize: [50, 50]
+      });
+
+      // ランダムな位置にポケモンをマップ上に表示
+      var pokemonMarker = L.marker([randomLat, randomLng], { icon: pokemonIcon }).addTo(map);
+      pokemonMarker.bindPopup("ポケモンが出現！");
+    }
+
+    // 位置情報取得時にポケモンをランダムで出現させる
+    navigator.geolocation.getCurrentPosition(function (position) {
+      var lat = position.coords.latitude;
+      var lng = position.coords.longitude;
+
+      // 半径50メートル以内でポケモンを出現させる
+      spawnPokemon(lat, lng, 0.05);
+    });
+
+    // PokeAPIからポケモンデータを取得して表示する
+    fetch('https://pokeapi.co/api/v2/pokemon/ditto')
+      .then(response => response.json())
+      .then(data => {
+        console.log(data); // ポケモンの詳細データ
+        var pokemonName = data.name;
+        var pokemonSprite = data.sprites.front_default; // ポケモンの画像
+
+        // ポケモン名と画像を画面に表示
+        var pokemonDetailsDiv = document.getElementById('pokemon-details');
+        pokemonDetailsDiv.innerHTML = `
+          <div class="pokemon-info">
+            <img src="${pokemonSprite}" alt="${pokemonName}">
+            <h2>${pokemonName}</h2>
+          </div>
+        `;
+      });
+  </script>
 </body>
 </html>
